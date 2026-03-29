@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
+import { sortOrdersByProximity } from "@/lib/dispatch";
+import { Order } from "@/lib/types";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -15,6 +17,12 @@ export async function GET(request: Request) {
 
   const supabase = getServiceClient();
 
+  const { data: runner } = await supabase
+    .from("runners")
+    .select("current_section")
+    .eq("id", runnerId)
+    .single();
+
   const { data, error } = await supabase
     .from("orders")
     .select("*, order_items(*), vendor:vendors(name)")
@@ -28,5 +36,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  const orders = (data ?? []) as Order[];
+  const runnerSection = runner?.current_section ?? null;
+
+  const available = orders.filter((o) => o.status === "ready" && !o.runner_id);
+  const claimed = orders.filter((o) => o.runner_id === runnerId);
+
+  const sortedAvailable = sortOrdersByProximity(available, runnerSection);
+
+  return NextResponse.json([...sortedAvailable, ...claimed]);
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { OrderStatus } from "@/lib/types";
+import { assignRunner } from "@/lib/dispatch";
 
 const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending: ["accepted", "cancelled"],
@@ -23,7 +24,7 @@ export async function PATCH(
 
     const { data: current, error: fetchError } = await supabase
       .from("orders")
-      .select("status")
+      .select("*, venue_id")
       .eq("id", params.id)
       .single();
 
@@ -46,6 +47,36 @@ export async function PATCH(
       updated_at: new Date().toISOString(),
     };
     if (runner_id) updateData.runner_id = runner_id;
+
+    // When transitioning to "ready", attempt automatic runner dispatch
+    // using section proximity algorithm
+    if (status === "ready" && !runner_id) {
+      const { data: runners } = await supabase
+        .from("runners")
+        .select("*")
+        .eq("venue_id", current.venue_id)
+        .eq("status", "idle");
+
+      const bestRunner = assignRunner(current, runners ?? []);
+
+      if (bestRunner) {
+        updateData.status = "assigned";
+        updateData.runner_id = bestRunner.id;
+
+        await supabase
+          .from("runners")
+          .update({ status: "busy" })
+          .eq("id", bestRunner.id);
+      }
+    }
+
+    // When a runner completes delivery, set them back to idle
+    if (status === "delivered" && current.runner_id) {
+      await supabase
+        .from("runners")
+        .update({ status: "idle" })
+        .eq("id", current.runner_id);
+    }
 
     const { data: updated, error: updateError } = await supabase
       .from("orders")

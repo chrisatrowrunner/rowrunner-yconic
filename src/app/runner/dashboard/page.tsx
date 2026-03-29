@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Order, OrderStatus } from "@/lib/types";
+import { sortOrdersByProximity } from "@/lib/dispatch";
 import StatusBadge from "@/components/StatusBadge";
 import Logo from "@/components/Logo";
 
@@ -12,6 +13,7 @@ const RUNNER_VENUE_ID = process.env.NEXT_PUBLIC_RUNNER_VENUE_ID;
 export default function RunnerDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [runnerId, setRunnerId] = useState<string | null>(null);
+  const [runnerSection, setRunnerSection] = useState<string | null>(null);
   const [venueId, setVenueId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -31,12 +33,13 @@ export default function RunnerDashboard() {
 
       const { data: runner } = await supabase
         .from("runners")
-        .select("venue_id")
+        .select("venue_id, current_section")
         .eq("id", session.user.id)
         .single();
 
       const vid = runner?.venue_id ?? RUNNER_VENUE_ID ?? "";
       setVenueId(vid);
+      setRunnerSection(runner?.current_section ?? null);
       setLoading(false);
     }
     checkAuth();
@@ -95,6 +98,18 @@ export default function RunnerDashboard() {
     fetchOrders();
   }
 
+  async function updateSection(newSection: string) {
+    if (!runnerId) return;
+    setRunnerSection(newSection);
+
+    await supabase
+      .from("runners")
+      .update({ current_section: newSection })
+      .eq("id", runnerId);
+
+    fetchOrders();
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/runner/login");
@@ -108,8 +123,9 @@ export default function RunnerDashboard() {
     );
   }
 
-  const available = orders.filter(
-    (o) => o.status === "ready" && !o.runner_id
+  const available = sortOrdersByProximity(
+    orders.filter((o) => o.status === "ready" && !o.runner_id),
+    runnerSection
   );
   const myOrders = orders.filter((o) => o.runner_id === runnerId);
 
@@ -131,6 +147,26 @@ export default function RunnerDashboard() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6">
+        <div className="mb-6 bg-stadium-medium rounded-xl border border-brand-800/30 p-3">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-slate-400 font-medium uppercase tracking-wider">
+              My Section
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={runnerSection ?? ""}
+                onChange={(e) => updateSection(e.target.value)}
+                placeholder="e.g. 112"
+                className="w-20 text-center bg-stadium-dark border border-brand-800/50 rounded-lg px-2 py-1.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              />
+              <span className="text-[10px] text-slate-500">
+                Orders sorted by proximity
+              </span>
+            </div>
+          </div>
+        </div>
+
         <section className="mb-8">
           <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
@@ -147,10 +183,12 @@ export default function RunnerDashboard() {
             </div>
           ) : (
             <div className="space-y-3">
-              {available.map((order) => (
+              {available.map((order, idx) => (
                 <OrderCard
                   key={order.id}
                   order={order}
+                  runnerSection={runnerSection}
+                  isNearest={idx === 0 && runnerSection !== null}
                   actions={
                     <button
                       onClick={() => updateStatus(order.id, "assigned")}
@@ -204,21 +242,47 @@ export default function RunnerDashboard() {
 function OrderCard({
   order,
   actions,
+  runnerSection,
+  isNearest,
 }: {
   order: Order;
   actions: React.ReactNode;
+  runnerSection?: string | null;
+  isNearest?: boolean;
 }) {
   const seatLabel = `S${order.seat_section} R${order.seat_row} #${order.seat_number}`;
 
+  const sectionDist = runnerSection
+    ? Math.abs(parseInt(order.seat_section, 10) - parseInt(runnerSection, 10))
+    : null;
+
   return (
-    <div className="bg-stadium-medium rounded-xl border border-brand-800/30 p-4">
+    <div className={`bg-stadium-medium rounded-xl border p-4 ${
+      isNearest ? "border-cyan-500/60 ring-1 ring-cyan-500/20" : "border-brand-800/30"
+    }`}>
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="font-mono text-brand-400 font-bold text-lg">
             {seatLabel}
           </div>
-          <div className="text-xs text-slate-500">
-            {order.vendor?.name} &middot; #{order.id.slice(0, 8)}
+          <div className="text-xs text-slate-500 flex items-center gap-2">
+            <span>{order.vendor?.name} &middot; #{order.id.slice(0, 8)}</span>
+            {sectionDist !== null && !isNaN(sectionDist) && (
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                sectionDist === 0
+                  ? "bg-green-500/20 text-green-400"
+                  : sectionDist <= 3
+                    ? "bg-cyan-500/20 text-cyan-400"
+                    : "bg-amber-500/20 text-amber-400"
+              }`}>
+                {sectionDist === 0 ? "Your section" : `${sectionDist} sections away`}
+              </span>
+            )}
+            {isNearest && (
+              <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 text-[10px] font-bold">
+                Nearest
+              </span>
+            )}
           </div>
         </div>
         <StatusBadge status={order.status as OrderStatus} />
