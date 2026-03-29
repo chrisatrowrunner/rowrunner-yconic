@@ -70,6 +70,8 @@ create table public.orders (
   service_fee numeric(8,2) not null,
   delivery_fee numeric(8,2) not null default 0,
   total numeric(8,2) not null,
+  tip_percent integer default 0,
+  tip_amount numeric(8,2) not null default 0,
   status text not null default 'pending'
     check (status in ('pending','accepted','preparing','ready','assigned','delivering','delivered','cancelled')),
   type text not null default 'delivery' check (type in ('delivery','pickup')),

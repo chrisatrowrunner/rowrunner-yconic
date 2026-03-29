@@ -23,6 +23,8 @@ interface CreateOrderBody {
   customer_name?: string;
   customer_phone?: string;
   customer_email?: string;
+  tip_percent?: number;
+  tip_amount?: number;
   items: CreateOrderItem[];
 }
 
@@ -39,6 +41,8 @@ export async function POST(request: Request) {
       customer_name,
       customer_phone,
       customer_email,
+      tip_percent,
+      tip_amount,
       items,
     } = body;
 
@@ -53,7 +57,8 @@ export async function POST(request: Request) {
     const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const serviceFee = calculateServiceFee(subtotal);
     const deliveryFee = type === "delivery" ? DELIVERY_FEE : 0;
-    const total = Math.round((subtotal + serviceFee + deliveryFee) * 100) / 100;
+    const tipAmt = Math.round((tip_amount || 0) * 100) / 100;
+    const total = Math.round((subtotal + serviceFee + deliveryFee + tipAmt) * 100) / 100;
 
     const supabase = getServiceClient();
 
@@ -69,6 +74,8 @@ export async function POST(request: Request) {
         service_fee: serviceFee,
         delivery_fee: deliveryFee,
         total,
+        tip_percent: tip_percent || 0,
+        tip_amount: tipAmt,
         status: "pending",
         type,
         customer_name: customer_name || null,
@@ -128,6 +135,17 @@ export async function POST(request: Request) {
           currency: "usd",
           product_data: { name: "Delivery Fee" },
           unit_amount: Math.round(deliveryFee * 100),
+        },
+        quantity: 1,
+      });
+    }
+
+    if (tipAmt > 0) {
+      lineItems.push({
+        price_data: {
+          currency: "usd",
+          product_data: { name: `Runner Tip${tip_percent ? ` (${tip_percent}%)` : ""}` },
+          unit_amount: Math.round(tipAmt * 100),
         },
         quantity: 1,
       });

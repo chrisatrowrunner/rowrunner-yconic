@@ -297,10 +297,17 @@ function OrderCard({
       </div>
 
       <div className="flex items-center justify-between pt-2 border-t border-brand-800/30">
-        <span className="text-xs text-slate-500">
-          {order.type === "delivery" ? "Deliver to seat" : "Pickup"} &middot; $
-          {order.total.toFixed(2)}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-slate-500">
+            {order.type === "delivery" ? "Deliver to seat" : "Pickup"} &middot; $
+            {order.total.toFixed(2)}
+          </span>
+          {order.tip_amount > 0 && (
+            <span className="text-xs font-semibold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">
+              💰 ${order.tip_amount.toFixed(2)} tip
+            </span>
+          )}
+        </div>
         {actions}
       </div>
     </div>

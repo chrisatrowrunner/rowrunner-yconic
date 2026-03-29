@@ -50,6 +50,8 @@ export interface Order {
   service_fee: number;
   delivery_fee: number;
   total: number;
+  tip_percent: number;
+  tip_amount: number;
   status: OrderStatus;
   type: OrderType;
   stripe_session_id: string | null;

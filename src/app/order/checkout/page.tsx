@@ -28,12 +28,20 @@ function CheckoutInner() {
   const [seatNumber, setSeatNumber] = useState(seat);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [tipOption, setTipOption] = useState<number | "custom">(20);
+  const [customTip, setCustomTip] = useState("");
 
   const items = cart?.items ?? [];
   const subtotal = calculateSubtotal(items);
   const serviceFee = calculateServiceFee(subtotal);
   const deliveryFee = orderType === "delivery" ? DELIVERY_FEE : 0;
-  const total = Math.round((subtotal + serviceFee + deliveryFee) * 100) / 100;
+
+  const tipPercent = tipOption === "custom" ? 0 : tipOption;
+  const tipAmount =
+    tipOption === "custom"
+      ? Math.round(parseFloat(customTip || "0") * 100) / 100
+      : Math.round(subtotal * (tipOption / 100) * 100) / 100;
+  const total = Math.round((subtotal + serviceFee + deliveryFee + tipAmount) * 100) / 100;
 
   if (items.length === 0) {
     return (
@@ -73,6 +81,8 @@ function CheckoutInner() {
           customer_name: name,
           customer_phone: phone,
           customer_email: email,
+          tip_percent: tipPercent,
+          tip_amount: tipAmount,
           items: items.map((ci) => ({
             menu_item_id: ci.menuItem.id,
             name: ci.menuItem.name,
@@ -148,6 +158,12 @@ function CheckoutInner() {
               <div className="flex justify-between text-slate-400">
                 <span>Delivery fee</span>
                 <span>${deliveryFee.toFixed(2)}</span>
+              </div>
+            )}
+            {tipAmount > 0 && (
+              <div className="flex justify-between text-green-400">
+                <span>Runner tip{tipOption !== "custom" ? ` (${tipOption}%)` : ""}</span>
+                <span>${tipAmount.toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between font-bold text-slate-100 pt-1">
@@ -247,6 +263,60 @@ function CheckoutInner() {
                 />
               </div>
             </div>
+          </fieldset>
+
+          {/* Tip */}
+          <fieldset>
+            <legend className="text-sm font-semibold text-brand-400 uppercase tracking-wider mb-3">
+              Runner Tip
+            </legend>
+            <p className="text-xs text-slate-500 mb-3">
+              100% of tips go directly to your runner
+            </p>
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              {[15, 20, 25].map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => setTipOption(pct)}
+                  className={`py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                    tipOption === pct
+                      ? "bg-brand-500 text-white ring-2 ring-brand-400"
+                      : "bg-stadium-medium border border-brand-800/40 text-slate-300 hover:bg-stadium-light"
+                  }`}
+                >
+                  <div>{pct}%</div>
+                  <div className="text-[10px] font-normal opacity-70">
+                    ${(Math.round(subtotal * (pct / 100) * 100) / 100).toFixed(2)}
+                  </div>
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setTipOption("custom")}
+                className={`py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                  tipOption === "custom"
+                    ? "bg-brand-500 text-white ring-2 ring-brand-400"
+                    : "bg-stadium-medium border border-brand-800/40 text-slate-300 hover:bg-stadium-light"
+                }`}
+              >
+                Custom
+              </button>
+            </div>
+            {tipOption === "custom" && (
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.50"
+                  value={customTip}
+                  onChange={(e) => setCustomTip(e.target.value)}
+                  className="w-full pl-7 pr-3 py-2.5 bg-stadium-medium border border-brand-800/40 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                  placeholder="Enter tip amount"
+                />
+              </div>
+            )}
           </fieldset>
 
           {/* Payment note */}
