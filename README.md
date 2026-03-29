@@ -6,6 +6,7 @@ RowRunner eliminates concession lines at stadiums. Fans scan a QR code at their 
 
 Built for the underserved 7,000–30,000 seat venue segment — minor league baseball, lower-division soccer, mid-size arenas — where enterprise solutions do not operate.
 
+**Live:** [rowrunner-yconic.vercel.app](https://rowrunner-yconic.vercel.app)
 **Demo venue:** Rhode Island FC at Beirne Stadium (slug: `rifc`)
 
 ---
@@ -13,17 +14,19 @@ Built for the underserved 7,000–30,000 seat venue segment — minor league bas
 ## How It Works
 
 1. **Fan scans QR code** — URL encodes venue, section, row, and seat (`/order?venue=rifc&section=112&row=H&seat=14`)
-2. **Browse & order** — Fan selects a vendor, adds items to cart, chooses delivery or pickup
-3. **Pay via Stripe** — 10.5% service fee + $2.00 delivery fee applied at checkout
-4. **Real-time tracking** — Order status updates live via Supabase Realtime (no polling)
-5. **Runner delivers** — Runner claims order from dashboard, marks picked up, then delivered
+2. **Browse & order** — Fan selects a vendor, adds items to cart, enters name/phone/email, selects a runner tip (15/20/25% or custom)
+3. **Pay via Stripe** — 10.5% service fee + $2.00 delivery fee + optional tip applied at checkout
+4. **Auto-dispatch** — After payment, order status moves to "Preparing" and the nearest idle runner is auto-assigned via section proximity
+5. **Real-time tracking** — Customer sees a 4-step status timeline updated live via Supabase Realtime
+6. **Runner delivers** — Runner sees order on dashboard, picks up, marks "On the Way", then "Delivered"
 
 ## Key Innovations
 
 - **Seat-as-address** — Structured section/row/seat replaces GPS entirely, solving the indoor location problem that breaks traditional delivery apps inside stadiums
-- **Runner proximity dispatch** — When an order becomes "ready", the system automatically assigns the nearest idle runner using section-distance calculation (`|runner_section - order_section|`). Runners set their current section from the dashboard; available orders are sorted nearest-first with visual proximity badges. Fallback to manual claim when no idle runners are available.
+- **Runner proximity dispatch** — After payment, the system automatically assigns the nearest idle runner using section-distance calculation (`|runner_section - order_section|`). Runners set their current section from the dashboard; available orders are sorted nearest-first with visual proximity badges. Fallback to manual claim when no idle runners are available.
 - **Venue-scoped real-time** — Supabase Realtime channels scoped per venue, enabling efficient broadcast to all stakeholders simultaneously
 - **Fee-side revenue model** — All revenue is fan-side (10.5% service fee + $2.00 delivery fee), making the venue pitch zero-cost and the vendor pitch commission-free
+- **Runner tip system** — Fans select 15%, 20%, 25%, or a custom dollar amount at checkout. Tips appear as a Stripe line item and are displayed on the runner dashboard. Runners see tip amounts before claiming and can track total tips earned in the Past Deliveries section.
 
 ---
 
@@ -49,10 +52,10 @@ Fan (mobile browser)
   │
   ├── /order?venue=rifc&section=112&row=H&seat=14
   │     ├── VendorList → MenuView → CartSheet
-  │     └── POST /api/orders/create → Stripe Checkout
+  │     └── /order/checkout → POST /api/orders/create → Stripe Checkout
   │
   ├── /order/[id]/status
-  │     └── Supabase Realtime subscription (live updates)
+  │     └── Supabase Realtime subscription (live 4-step timeline)
   │
 Runner (authenticated)
   │
@@ -60,8 +63,8 @@ Runner (authenticated)
   └── /runner/dashboard
         ├── Section selector (runner sets current location)
         ├── Available orders sorted by proximity (nearest first)
-        ├── Auto-dispatch: ready → nearest idle runner auto-assigned
-        ├── Manual claim → assigned → delivering → delivered
+        ├── Claim order → Picked Up → Delivered
+        ├── Past Deliveries section (history + total tips)
         └── Supabase Realtime subscription (venue-scoped)
 ```
 
@@ -72,22 +75,31 @@ Runner (authenticated)
 | GET | `/api/venues/[slug]` | Get venue by QR slug |
 | GET | `/api/vendors?venue_id=` | List vendors for a venue |
 | GET | `/api/menu?vendor_id=` | Get menu items for a vendor |
-| POST | `/api/orders/create` | Create order + Stripe session |
-| GET | `/api/orders/[id]` | Get order by ID |
-| PATCH | `/api/orders/[id]/status` | Update order status (with transition validation + auto-dispatch) |
-| POST | `/api/webhooks/stripe` | Handle Stripe payment confirmation |
-| GET | `/api/runners/orders` | Get orders for runner dashboard (proximity-sorted) |
-| POST | `/api/runners/dispatch` | Auto-assign nearest idle runner to a ready order |
+| POST | `/api/orders/create` | Create order + Stripe session (includes tip line item) |
+| GET | `/api/orders/[id]` | Get order by ID (with derived tip) |
+| PATCH | `/api/orders/[id]/status` | Update order status (with transition validation) |
+| POST | `/api/webhooks/stripe` | Handle Stripe payment → auto-advance to preparing + auto-dispatch runner |
+| GET | `/api/runners/orders` | Get active orders for runner dashboard (proximity-sorted) |
+| POST | `/api/runners/claim` | Runner claims an unclaimed order |
+| POST | `/api/runners/dispatch` | Auto-assign nearest idle runner to a preparing order |
+| GET | `/api/runners/history` | Get runner's delivered orders + total tips |
 
 ### Order Status Flow
 
 ```
-pending → accepted → preparing → ready → assigned → delivering → delivered
-                                   │         │                        │
-                                   │         └── auto-dispatch:       └── runner → idle
-                                   │             nearest idle runner
-                                   └── (cancelled at any step)
+pending  →  preparing  →  delivering  →  delivered
+   │            │              │              │
+   │            │              │              └── runner set back to idle
+   │            │              └── runner tapped "Picked Up"
+   │            └── payment confirmed (Stripe webhook) + runner auto-assigned
+   └── order created, awaiting Stripe payment
 ```
+
+Four statuses, no manual vendor step:
+- **Order Placed** (`pending`) — customer submitted, awaiting payment
+- **Preparing** (`preparing`) — paid, auto-dispatched, visible to runners
+- **On the Way** (`delivering`) — runner picked up the order
+- **Delivered** (`delivered`) — runner confirmed delivery
 
 ---
 
@@ -105,10 +117,11 @@ src/
 │   │   ├── VendorList.tsx          # Vendor selection cards
 │   │   ├── MenuView.tsx            # Menu items grouped by category
 │   │   ├── CartSheet.tsx           # Slide-up cart with checkout
-│   │   └── [id]/status/page.tsx    # Real-time order tracking
+│   │   ├── checkout/page.tsx       # Customer info + tip selection + Stripe redirect
+│   │   └── [id]/status/page.tsx    # Real-time 4-step order tracking
 │   ├── runner/
 │   │   ├── login/page.tsx          # Supabase Auth login
-│   │   └── dashboard/page.tsx      # Runner order management
+│   │   └── dashboard/page.tsx      # Runner order management + past deliveries
 │   └── api/
 │       ├── venues/[slug]/route.ts
 │       ├── vendors/route.ts
@@ -117,16 +130,20 @@ src/
 │       ├── orders/[id]/route.ts
 │       ├── orders/[id]/status/route.ts
 │       ├── runners/orders/route.ts
+│       ├── runners/claim/route.ts
 │       ├── runners/dispatch/route.ts
+│       ├── runners/history/route.ts
 │       └── webhooks/stripe/route.ts
 ├── components/
 │   ├── Header.tsx                  # Sticky header with branding + cart
+│   ├── Logo.tsx                    # RowRunner logo component
 │   └── StatusBadge.tsx             # Color-coded order status pill
 ├── context/
 │   └── CartContext.tsx              # Global cart state management
 └── lib/
     ├── supabase.ts                 # Supabase client (anon + service role)
     ├── stripe.ts                   # Stripe server client
+    ├── api.ts                      # Shared API utilities (error handling, tip derivation)
     ├── dispatch.ts                 # Runner proximity dispatch algorithm
     └── types.ts                    # TypeScript interfaces + pricing logic
 ```
@@ -201,9 +218,9 @@ stripe listen --forward-to localhost:3000/api/webhooks/stripe
 |---|---|---|
 | Service fee | 10.5% of subtotal | Fan |
 | Delivery fee | $2.00 flat (delivery only) | Fan |
+| Runner tips | 15/20/25% or custom (100% to runner) | Fan (optional) |
 | Venue cost | $0 | — |
 | Vendor commission | 0% | — |
-| Runner tips | 100% to runner | Fan (optional) |
 
 ---
 
