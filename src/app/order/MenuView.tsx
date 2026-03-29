@@ -92,7 +92,7 @@ export default function MenuView({ vendor, onBack }: MenuViewProps) {
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between p-3 bg-stadium-medium rounded-lg border border-slate-700/50"
+                      className="flex items-center justify-between p-3 bg-stadium-medium rounded-lg border border-brand-800/30"
                     >
                       <div className="flex-1 mr-3">
                         <div className="font-medium text-slate-100">

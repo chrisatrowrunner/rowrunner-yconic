@@ -99,7 +99,7 @@ export default function OrderStatusPage() {
                           ? "bg-brand-500 text-white ring-4 ring-brand-500/30"
                           : isCompleted
                             ? "bg-green-500 text-white"
-                            : "bg-slate-700 text-slate-500"
+                            : "bg-brand-900 text-slate-500"
                     }`}
                   >
                     {isCompleted && !isCurrent ? (
@@ -119,7 +119,7 @@ export default function OrderStatusPage() {
                       className={`w-0.5 h-8 ${
                         isCompleted && idx < currentStepIdx
                           ? "bg-green-500"
-                          : "bg-slate-700"
+                          : "bg-brand-900"
                       }`}
                     />
                   )}
@@ -143,7 +143,7 @@ export default function OrderStatusPage() {
         </div>
 
         {/* Order details */}
-        <div className="bg-stadium-medium rounded-xl border border-slate-700/50 p-4">
+        <div className="bg-stadium-medium rounded-xl border border-brand-800/30 p-4">
           <h3 className="font-semibold mb-3">Order Details</h3>
           <div className="space-y-2">
             {order.order_items?.map((item) => (
@@ -160,7 +160,7 @@ export default function OrderStatusPage() {
               </div>
             ))}
           </div>
-          <div className="border-t border-slate-700 mt-3 pt-3 space-y-1 text-sm">
+          <div className="border-t border-brand-800/40 mt-3 pt-3 space-y-1 text-sm">
             <div className="flex justify-between text-slate-400">
               <span>Subtotal</span>
               <span>${order.subtotal.toFixed(2)}</span>

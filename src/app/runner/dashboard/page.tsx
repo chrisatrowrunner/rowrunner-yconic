@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Order, OrderStatus } from "@/lib/types";
 import StatusBadge from "@/components/StatusBadge";
+import Logo from "@/components/Logo";
 
 const RUNNER_VENUE_ID = process.env.NEXT_PUBLIC_RUNNER_VENUE_ID;
 
@@ -114,26 +115,11 @@ export default function RunnerDashboard() {
 
   return (
     <div className="min-h-screen bg-stadium-dark">
-      <header className="sticky top-0 z-50 bg-stadium-dark/95 backdrop-blur border-b border-slate-800">
+      <header className="sticky top-0 z-50 bg-stadium-dark/95 backdrop-blur border-b border-brand-800/40">
         <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <svg
-              className="w-5 h-5 text-brand-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
-            <span className="font-bold">
-              <span className="text-brand-500">Row</span>Runner
-            </span>
-            <span className="text-xs text-slate-500 ml-2">Runner Dashboard</span>
+          <div className="flex items-center gap-3">
+            <Logo size="sm" showText={true} />
+            <span className="text-xs text-slate-500 ml-1">Runner Dashboard</span>
           </div>
           <button
             onClick={handleLogout}
@@ -145,13 +131,12 @@ export default function RunnerDashboard() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6">
-        {/* Available orders */}
         <section className="mb-8">
           <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
             Available Orders
             {available.length > 0 && (
-              <span className="text-xs bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded-full">
+              <span className="text-xs bg-brand-500/20 text-brand-400 px-2 py-0.5 rounded-full">
                 {available.length}
               </span>
             )}
@@ -180,10 +165,9 @@ export default function RunnerDashboard() {
           )}
         </section>
 
-        {/* My active orders */}
         <section>
           <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-brand-500" />
+            <span className="w-2 h-2 rounded-full bg-brand-400" />
             My Orders
             {myOrders.length > 0 && (
               <span className="text-xs bg-brand-500/20 text-brand-400 px-2 py-0.5 rounded-full">
@@ -227,7 +211,7 @@ function OrderCard({
   const seatLabel = `S${order.seat_section} R${order.seat_row} #${order.seat_number}`;
 
   return (
-    <div className="bg-stadium-medium rounded-xl border border-slate-700/50 p-4">
+    <div className="bg-stadium-medium rounded-xl border border-brand-800/30 p-4">
       <div className="flex items-start justify-between mb-3">
         <div>
           <div className="font-mono text-brand-400 font-bold text-lg">
@@ -248,7 +232,7 @@ function OrderCard({
         ))}
       </div>
 
-      <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
+      <div className="flex items-center justify-between pt-2 border-t border-brand-800/30">
         <span className="text-xs text-slate-500">
           {order.type === "delivery" ? "Deliver to seat" : "Pickup"} &middot; $
           {order.total.toFixed(2)}

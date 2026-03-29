@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Logo from "./Logo";
 
 interface HeaderProps {
   venueName?: string;
@@ -18,26 +19,10 @@ export default function Header({
   onCartClick,
 }: HeaderProps) {
   return (
-    <header className="sticky top-0 z-50 bg-stadium-dark/95 backdrop-blur border-b border-slate-800">
+    <header className="sticky top-0 z-50 bg-stadium-dark/95 backdrop-blur border-b border-brand-800/40">
       <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <svg
-            className="w-5 h-5 text-brand-500"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
-          </svg>
-          <span className="font-bold text-lg">
-            <span className="text-brand-500">Row</span>
-            <span className="text-slate-100">Runner</span>
-          </span>
+          <Logo size="sm" showText={true} />
         </Link>
 
         <div className="flex items-center gap-3">
@@ -50,7 +35,7 @@ export default function Header({
           {showCart && (
             <button
               onClick={onCartClick}
-              className="relative p-2 rounded-lg hover:bg-slate-800 transition-colors"
+              className="relative p-2 rounded-lg hover:bg-stadium-medium transition-colors"
             >
               <svg
                 className="w-6 h-6 text-slate-300"

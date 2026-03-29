@@ -83,13 +83,13 @@ export default function CartSheet({
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="absolute bottom-0 left-0 right-0 bg-stadium-dark border-t border-slate-700 rounded-t-2xl max-h-[85vh] overflow-y-auto animate-slide-up">
+      <div className="absolute bottom-0 left-0 right-0 bg-stadium-dark border-t border-brand-800/40 rounded-t-2xl max-h-[85vh] overflow-y-auto animate-slide-up">
         <div className="max-w-lg mx-auto p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold">Your Order</h2>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+              className="p-2 hover:bg-stadium-medium rounded-lg transition-colors"
             >
               <svg
                 className="w-5 h-5"
@@ -136,7 +136,7 @@ export default function CartSheet({
                             ? removeItem(ci.menuItem.id)
                             : updateQuantity(ci.menuItem.id, ci.quantity - 1)
                         }
-                        className="w-7 h-7 rounded-md bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-sm transition-colors"
+                        className="w-7 h-7 rounded-md bg-brand-800 hover:bg-brand-700 flex items-center justify-center text-sm transition-colors"
                       >
                         -
                       </button>
@@ -147,7 +147,7 @@ export default function CartSheet({
                         onClick={() =>
                           updateQuantity(ci.menuItem.id, ci.quantity + 1)
                         }
-                        className="w-7 h-7 rounded-md bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-sm transition-colors"
+                        className="w-7 h-7 rounded-md bg-brand-800 hover:bg-brand-700 flex items-center justify-center text-sm transition-colors"
                       >
                         +
                       </button>
@@ -174,7 +174,7 @@ export default function CartSheet({
               </div>
 
               {/* Price breakdown */}
-              <div className="space-y-1 text-sm border-t border-slate-700 pt-3 mb-4">
+              <div className="space-y-1 text-sm border-t border-brand-800/40 pt-3 mb-4">
                 <div className="flex justify-between text-slate-400">
                   <span>Subtotal</span>
                   <span>${subtotal.toFixed(2)}</span>

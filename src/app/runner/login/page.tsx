@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import Logo from "@/components/Logo";
 
 export default function RunnerLogin() {
   const [email, setEmail] = useState("");
@@ -34,20 +35,8 @@ export default function RunnerLogin() {
     <div className="flex items-center justify-center min-h-screen px-6">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-brand-500/20 mb-4">
-            <svg
-              className="w-7 h-7 text-brand-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
+          <div className="flex justify-center mb-4">
+            <Logo size="md" showText={false} />
           </div>
           <h1 className="text-2xl font-bold">Runner Login</h1>
           <p className="text-slate-400 text-sm mt-1">
@@ -70,7 +59,7 @@ export default function RunnerLogin() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2.5 bg-stadium-medium border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full px-3 py-2.5 bg-stadium-medium border border-brand-800/40 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               placeholder="runner@rowrunner.com"
               required
             />
@@ -84,7 +73,7 @@ export default function RunnerLogin() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2.5 bg-stadium-medium border border-slate-700 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+              className="w-full px-3 py-2.5 bg-stadium-medium border border-brand-800/40 rounded-lg text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               placeholder="Your password"
               required
             />

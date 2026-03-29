@@ -22,11 +22,11 @@ export default function VendorList({ vendors, onSelect }: VendorListProps) {
         <button
           key={vendor.id}
           onClick={() => onSelect(vendor)}
-          className="w-full flex items-center gap-4 p-4 bg-stadium-medium hover:bg-stadium-light rounded-xl border border-slate-700/50 transition-all active:scale-[0.98]"
+          className="w-full flex items-center gap-4 p-4 bg-stadium-medium hover:bg-stadium-light rounded-xl border border-brand-800/30 transition-all active:scale-[0.98]"
         >
-          <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-brand-500/10 flex items-center justify-center">
+          <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-brand-500/15 flex items-center justify-center">
             <svg
-              className="w-6 h-6 text-brand-500"
+              className="w-6 h-6 text-brand-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -44,7 +44,7 @@ export default function VendorList({ vendors, onSelect }: VendorListProps) {
             <div className="text-sm text-slate-400">{vendor.description}</div>
           </div>
           <svg
-            className="w-5 h-5 text-slate-500"
+            className="w-5 h-5 text-brand-600"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
