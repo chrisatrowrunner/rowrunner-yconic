@@ -87,6 +87,15 @@ export default function RunnerLogin() {
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
+
+        <div className="text-center mt-6">
+          <a
+            href="/"
+            className="text-sm text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            &larr; Back to home
+          </a>
+        </div>
       </div>
     </div>
   );
