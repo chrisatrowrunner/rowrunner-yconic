@@ -21,6 +21,7 @@ Built for the underserved 7,000–30,000 seat venue segment — minor league bas
 ## Key Innovations
 
 - **Seat-as-address** — Structured section/row/seat replaces GPS entirely, solving the indoor location problem that breaks traditional delivery apps inside stadiums
+- **Runner proximity dispatch** — When an order becomes "ready", the system automatically assigns the nearest idle runner using section-distance calculation (`|runner_section - order_section|`). Runners set their current section from the dashboard; available orders are sorted nearest-first with visual proximity badges. Fallback to manual claim when no idle runners are available.
 - **Venue-scoped real-time** — Supabase Realtime channels scoped per venue, enabling efficient broadcast to all stakeholders simultaneously
 - **Fee-side revenue model** — All revenue is fan-side (10.5% service fee + $2.00 delivery fee), making the venue pitch zero-cost and the vendor pitch commission-free
 
@@ -57,8 +58,10 @@ Runner (authenticated)
   │
   ├── /runner/login → Supabase Auth
   └── /runner/dashboard
-        ├── Available orders (status = ready, unassigned)
-        ├── Claim → assigned → delivering → delivered
+        ├── Section selector (runner sets current location)
+        ├── Available orders sorted by proximity (nearest first)
+        ├── Auto-dispatch: ready → nearest idle runner auto-assigned
+        ├── Manual claim → assigned → delivering → delivered
         └── Supabase Realtime subscription (venue-scoped)
 ```
 
@@ -71,16 +74,19 @@ Runner (authenticated)
 | GET | `/api/menu?vendor_id=` | Get menu items for a vendor |
 | POST | `/api/orders/create` | Create order + Stripe session |
 | GET | `/api/orders/[id]` | Get order by ID |
-| PATCH | `/api/orders/[id]/status` | Update order status (with transition validation) |
+| PATCH | `/api/orders/[id]/status` | Update order status (with transition validation + auto-dispatch) |
 | POST | `/api/webhooks/stripe` | Handle Stripe payment confirmation |
-| GET | `/api/runners/orders` | Get orders for runner dashboard |
+| GET | `/api/runners/orders` | Get orders for runner dashboard (proximity-sorted) |
+| POST | `/api/runners/dispatch` | Auto-assign nearest idle runner to a ready order |
 
 ### Order Status Flow
 
 ```
 pending → accepted → preparing → ready → assigned → delivering → delivered
-                                                                     │
-                                                          (cancelled at any step)
+                                   │         │                        │
+                                   │         └── auto-dispatch:       └── runner → idle
+                                   │             nearest idle runner
+                                   └── (cancelled at any step)
 ```
 
 ---
@@ -111,6 +117,7 @@ src/
 │       ├── orders/[id]/route.ts
 │       ├── orders/[id]/status/route.ts
 │       ├── runners/orders/route.ts
+│       ├── runners/dispatch/route.ts
 │       └── webhooks/stripe/route.ts
 ├── components/
 │   ├── Header.tsx                  # Sticky header with branding + cart
@@ -120,6 +127,7 @@ src/
 └── lib/
     ├── supabase.ts                 # Supabase client (anon + service role)
     ├── stripe.ts                   # Stripe server client
+    ├── dispatch.ts                 # Runner proximity dispatch algorithm
     └── types.ts                    # TypeScript interfaces + pricing logic
 ```
 
