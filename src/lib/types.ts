@@ -53,6 +53,9 @@ export interface Order {
   status: OrderStatus;
   type: OrderType;
   stripe_session_id: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  customer_email: string | null;
   created_at: string;
   updated_at: string;
   order_items?: OrderItem[];

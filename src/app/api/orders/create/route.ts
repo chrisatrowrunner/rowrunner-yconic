@@ -20,6 +20,9 @@ interface CreateOrderBody {
   seat_row: string;
   seat_number: string;
   type: "delivery" | "pickup";
+  customer_name?: string;
+  customer_phone?: string;
+  customer_email?: string;
   items: CreateOrderItem[];
 }
 
@@ -33,6 +36,9 @@ export async function POST(request: Request) {
       seat_row,
       seat_number,
       type,
+      customer_name,
+      customer_phone,
+      customer_email,
       items,
     } = body;
 
@@ -61,6 +67,9 @@ export async function POST(request: Request) {
         total,
         status: "pending",
         type,
+        customer_name: customer_name || null,
+        customer_phone: customer_phone || null,
+        customer_email: customer_email || null,
       })
       .select()
       .single();
@@ -126,10 +135,13 @@ export async function POST(request: Request) {
       mode: "payment",
       payment_method_types: ["card"],
       line_items: lineItems,
+      ...(customer_email ? { customer_email } : {}),
       success_url: `${appUrl}/order/${order.id}/status?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/order?venue=rifc&section=${seat_section}&row=${seat_row}&seat=${seat_number}`,
       metadata: {
         order_id: order.id,
+        customer_name: customer_name || "",
+        customer_phone: customer_phone || "",
       },
     });
 

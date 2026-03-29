@@ -2,7 +2,6 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { CartProvider } from "@/context/CartContext";
 import OrderFlow from "./OrderFlow";
 
 function OrderPageInner() {
@@ -26,14 +25,12 @@ function OrderPageInner() {
   }
 
   return (
-    <CartProvider>
-      <OrderFlow
-        venueSlug={venueSlug}
-        section={section}
-        row={row}
-        seat={seat}
-      />
-    </CartProvider>
+    <OrderFlow
+      venueSlug={venueSlug}
+      section={section}
+      row={row}
+      seat={seat}
+    />
   );
 }
 

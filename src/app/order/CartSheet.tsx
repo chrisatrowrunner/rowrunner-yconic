@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import {
@@ -23,6 +22,7 @@ interface CartSheetProps {
 export default function CartSheet({
   open,
   onClose,
+  venueSlug,
   venueId,
   section,
   row,
@@ -30,7 +30,6 @@ export default function CartSheet({
 }: CartSheetProps) {
   const { cart, orderType, setOrderType, updateQuantity, removeItem, clearCart } =
     useCart();
-  const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
   if (!open) return null;
@@ -41,43 +40,12 @@ export default function CartSheet({
   const deliveryFee = orderType === "delivery" ? DELIVERY_FEE : 0;
   const total = Math.round((subtotal + serviceFee + deliveryFee) * 100) / 100;
 
-  async function handleCheckout() {
+  function handleContinue() {
     if (!cart || items.length === 0) return;
-    setSubmitting(true);
-
-    try {
-      const res = await fetch("/api/orders/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          venue_id: venueId,
-          vendor_id: cart.vendorId,
-          seat_section: section,
-          seat_row: row,
-          seat_number: seat,
-          type: orderType,
-          items: items.map((ci) => ({
-            menu_item_id: ci.menuItem.id,
-            name: ci.menuItem.name,
-            price: ci.menuItem.price,
-            quantity: ci.quantity,
-          })),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data.checkout_url) {
-        window.location.href = data.checkout_url;
-      } else if (data.order_id) {
-        clearCart();
-        router.push(`/order/${data.order_id}/status`);
-      }
-    } catch {
-      alert("Something went wrong. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
+    onClose();
+    router.push(
+      `/order/checkout?venue=${venueSlug}&venue_id=${venueId}&section=${section}&row=${row}&seat=${seat}`
+    );
   }
 
   return (
@@ -196,11 +164,10 @@ export default function CartSheet({
               </div>
 
               <button
-                onClick={handleCheckout}
-                disabled={submitting}
-                className="w-full py-3 bg-brand-500 hover:bg-brand-600 disabled:bg-brand-500/50 text-white font-bold rounded-xl transition-colors text-lg"
+                onClick={handleContinue}
+                className="w-full py-3 bg-brand-500 hover:bg-brand-600 text-white font-bold rounded-xl transition-colors text-lg"
               >
-                {submitting ? "Processing..." : `Pay $${total.toFixed(2)}`}
+                Continue to Checkout
               </button>
 
               <button

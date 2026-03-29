@@ -74,6 +74,9 @@ create table public.orders (
     check (status in ('pending','accepted','preparing','ready','assigned','delivering','delivered','cancelled')),
   type text not null default 'delivery' check (type in ('delivery','pickup')),
   stripe_session_id text unique,
+  customer_name text,
+  customer_phone text,
+  customer_email text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
