@@ -73,7 +73,7 @@ create table public.orders (
   tip_percent integer default 0,
   tip_amount numeric(8,2) not null default 0,
   status text not null default 'pending'
-    check (status in ('pending','accepted','preparing','ready','assigned','delivering','delivered','cancelled')),
+    check (status in ('pending','preparing','delivering','delivered')),
   type text not null default 'delivery' check (type in ('delivery','pickup')),
   stripe_session_id text unique,
   customer_name text,

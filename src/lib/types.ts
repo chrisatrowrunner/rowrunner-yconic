@@ -28,13 +28,9 @@ export interface MenuItem {
 
 export type OrderStatus =
   | "pending"
-  | "accepted"
   | "preparing"
-  | "ready"
-  | "assigned"
   | "delivering"
-  | "delivered"
-  | "cancelled";
+  | "delivered";
 
 export type OrderType = "delivery" | "pickup";
 
@@ -112,21 +108,14 @@ export function calculateTotal(subtotal: number, type: OrderType): number {
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   pending: "Order Placed",
-  accepted: "Order Accepted",
-  preparing: "Being Prepared",
-  ready: "Ready",
-  assigned: "Runner Assigned",
+  preparing: "Preparing",
   delivering: "On the Way",
   delivered: "Delivered",
-  cancelled: "Cancelled",
 };
 
 export const ORDER_STATUS_STEPS: OrderStatus[] = [
   "pending",
-  "accepted",
   "preparing",
-  "ready",
-  "assigned",
   "delivering",
   "delivered",
 ];

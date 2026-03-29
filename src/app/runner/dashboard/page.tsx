@@ -10,8 +10,23 @@ import Logo from "@/components/Logo";
 
 const RUNNER_VENUE_ID = process.env.NEXT_PUBLIC_RUNNER_VENUE_ID;
 
+interface HistoryOrder {
+  id: string;
+  total: number;
+  tip_amount: number;
+  seat_section: string;
+  seat_row: string;
+  seat_number: string;
+  customer_name: string | null;
+  created_at: string;
+  vendor?: { name: string } | null;
+}
+
 export default function RunnerDashboard() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [history, setHistory] = useState<HistoryOrder[]>([]);
+  const [totalTips, setTotalTips] = useState(0);
+  const [deliveryCount, setDeliveryCount] = useState(0);
   const [runnerId, setRunnerId] = useState<string | null>(null);
   const [runnerSection, setRunnerSection] = useState<string | null>(null);
   const [venueId, setVenueId] = useState<string>("");
@@ -57,9 +72,21 @@ export default function RunnerDashboard() {
     }
   }, [runnerId, venueId]);
 
+  const fetchHistory = useCallback(async () => {
+    if (!runnerId) return;
+    const res = await fetch(`/api/runners/history?runner_id=${runnerId}`);
+    if (res.ok) {
+      const data = await res.json();
+      setHistory(data.orders);
+      setTotalTips(data.totalTips);
+      setDeliveryCount(data.count);
+    }
+  }, [runnerId]);
+
   useEffect(() => {
     fetchOrders();
-  }, [fetchOrders]);
+    fetchHistory();
+  }, [fetchOrders, fetchHistory]);
 
   useEffect(() => {
     if (!venueId) return;
@@ -85,17 +112,25 @@ export default function RunnerDashboard() {
     };
   }, [venueId, fetchOrders]);
 
-  async function updateStatus(orderId: string, newStatus: OrderStatus) {
-    const body: Record<string, string> = { status: newStatus };
-    if (newStatus === "assigned" && runnerId) body.runner_id = runnerId;
+  async function claimOrder(orderId: string) {
+    if (!runnerId) return;
+    await fetch("/api/runners/claim", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order_id: orderId, runner_id: runnerId }),
+    });
+    fetchOrders();
+  }
 
+  async function updateStatus(orderId: string, newStatus: OrderStatus) {
     await fetch(`/api/orders/${orderId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ status: newStatus }),
     });
 
     fetchOrders();
+    if (newStatus === "delivered") fetchHistory();
   }
 
   async function updateSection(newSection: string) {
@@ -124,7 +159,7 @@ export default function RunnerDashboard() {
   }
 
   const available = sortOrdersByProximity(
-    orders.filter((o) => o.status === "ready" && !o.runner_id),
+    orders.filter((o) => !o.runner_id),
     runnerSection
   );
   const myOrders = orders.filter((o) => o.runner_id === runnerId);
@@ -191,7 +226,7 @@ export default function RunnerDashboard() {
                   isNearest={idx === 0 && runnerSection !== null}
                   actions={
                     <button
-                      onClick={() => updateStatus(order.id, "assigned")}
+                      onClick={() => claimOrder(order.id)}
                       className="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold rounded-lg transition-colors"
                     >
                       Claim Order
@@ -203,7 +238,7 @@ export default function RunnerDashboard() {
           )}
         </section>
 
-        <section>
+        <section className="mb-8">
           <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-brand-400" />
             My Orders
@@ -230,6 +265,64 @@ export default function RunnerDashboard() {
                     />
                   }
                 />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section>
+          <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500" />
+            Past Deliveries
+            {deliveryCount > 0 && (
+              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full">
+                {deliveryCount}
+              </span>
+            )}
+          </h2>
+
+          {deliveryCount > 0 && (
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-stadium-medium rounded-xl border border-brand-800/30 p-4 text-center">
+                <div className="text-2xl font-bold text-white">{deliveryCount}</div>
+                <div className="text-xs text-slate-400 mt-1">Deliveries</div>
+              </div>
+              <div className="bg-stadium-medium rounded-xl border border-green-500/30 p-4 text-center">
+                <div className="text-2xl font-bold text-green-400">${totalTips.toFixed(2)}</div>
+                <div className="text-xs text-slate-400 mt-1">Total Tips</div>
+              </div>
+            </div>
+          )}
+
+          {history.length === 0 ? (
+            <div className="text-sm text-slate-500 bg-stadium-medium rounded-lg p-4 text-center">
+              No completed deliveries yet
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {history.map((o) => (
+                <div
+                  key={o.id}
+                  className="bg-stadium-medium rounded-lg border border-brand-800/30 p-3 flex items-center justify-between"
+                >
+                  <div>
+                    <div className="text-sm font-medium text-slate-200">
+                      S{o.seat_section} R{o.seat_row} #{o.seat_number}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {o.vendor?.name ?? "Order"} &middot; {new Date(o.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })},{" "}
+                      {new Date(o.created_at).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-slate-300">${o.total.toFixed(2)}</div>
+                    {o.tip_amount > 0 && (
+                      <div className="text-xs font-semibold text-green-400">
+                        +${o.tip_amount.toFixed(2)} tip
+                      </div>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
           )}
@@ -323,7 +416,7 @@ function RunnerActions({
 }) {
   const status = order.status as OrderStatus;
 
-  if (status === "assigned") {
+  if (status === "preparing") {
     return (
       <button
         onClick={() => onUpdate(order.id, "delivering")}

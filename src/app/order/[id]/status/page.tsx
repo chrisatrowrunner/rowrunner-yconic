@@ -86,15 +86,14 @@ export default function OrderStatusPage() {
           {ORDER_STATUS_STEPS.map((step, idx) => {
             const isCompleted = idx <= currentStepIdx;
             const isCurrent = idx === currentStepIdx;
-            const isCancelled = order.status === "cancelled";
-
+            const isFinalDone = isCurrent && step === "delivered";
             return (
               <div key={step} className="flex items-start gap-4 mb-1">
                 <div className="flex flex-col items-center">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                      isCancelled
-                        ? "bg-red-500/20 border-2 border-red-500/50 text-red-400"
+                      isFinalDone
+                        ? "bg-green-500 text-white ring-4 ring-green-500/30"
                         : isCurrent
                           ? "bg-brand-500 text-white ring-4 ring-brand-500/30"
                           : isCompleted
@@ -102,7 +101,7 @@ export default function OrderStatusPage() {
                             : "bg-brand-900 text-slate-500"
                     }`}
                   >
-                    {isCompleted && !isCurrent ? (
+                    {(isCompleted && !isCurrent) || isFinalDone ? (
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path
                           fillRule="evenodd"
@@ -119,7 +118,9 @@ export default function OrderStatusPage() {
                       className={`w-0.5 h-8 ${
                         isCompleted && idx < currentStepIdx
                           ? "bg-green-500"
-                          : "bg-brand-900"
+                          : isFinalDone
+                            ? "bg-green-500"
+                            : "bg-brand-900"
                       }`}
                     />
                   )}
@@ -127,11 +128,13 @@ export default function OrderStatusPage() {
                 <div className="pt-1">
                   <div
                     className={`text-sm font-medium ${
-                      isCurrent
-                        ? "text-brand-400"
-                        : isCompleted
-                          ? "text-slate-200"
-                          : "text-slate-500"
+                      isFinalDone
+                        ? "text-green-400"
+                        : isCurrent
+                          ? "text-brand-400"
+                          : isCompleted
+                            ? "text-slate-200"
+                            : "text-slate-500"
                     }`}
                   >
                     {ORDER_STATUS_LABELS[step]}
