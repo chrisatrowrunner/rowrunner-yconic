@@ -43,7 +43,11 @@ export async function POST(request: Request) {
     } = body;
 
     if (!venue_id || !vendor_id || !items || items.length === 0) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      console.error("Missing required fields:", { venue_id, vendor_id, itemsLength: items?.length });
+      return NextResponse.json(
+        { error: "Missing required fields", detail: { venue_id: !!venue_id, vendor_id: !!vendor_id, items: items?.length ?? 0 } },
+        { status: 400 }
+      );
     }
 
     const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
@@ -77,7 +81,7 @@ export async function POST(request: Request) {
     if (orderError || !order) {
       console.error("Order creation error:", orderError);
       return NextResponse.json(
-        { error: "Failed to create order" },
+        { error: `Failed to create order: ${orderError?.message || "unknown"}` },
         { status: 500 }
       );
     }
@@ -155,9 +159,10 @@ export async function POST(request: Request) {
       checkout_url: session.url,
     });
   } catch (error) {
-    console.error("Create order error:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Create order error:", message);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: message || "Internal server error" },
       { status: 500 }
     );
   }
