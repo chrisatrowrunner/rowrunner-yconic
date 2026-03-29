@@ -2,10 +2,8 @@ import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { stripe } from "@/lib/stripe";
 import {
-  calculateSubtotal,
   calculateServiceFee,
   DELIVERY_FEE,
-  CartItem,
 } from "@/lib/types";
 
 interface CreateOrderItem {
@@ -42,12 +40,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const cartItems: CartItem[] = items.map((i) => ({
-      menuItem: { id: i.menu_item_id, price: i.price } as any,
-      quantity: i.quantity,
-    }));
-
-    const subtotal = calculateSubtotal(cartItems);
+    const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const serviceFee = calculateServiceFee(subtotal);
     const deliveryFee = type === "delivery" ? DELIVERY_FEE : 0;
     const total = Math.round((subtotal + serviceFee + deliveryFee) * 100) / 100;
