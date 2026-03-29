@@ -2,25 +2,22 @@ import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { assignRunner } from "@/lib/dispatch";
 import { Order, Runner } from "@/lib/types";
+import { errorResponse, serverError } from "@/lib/api";
 
 /**
  * POST /api/runners/dispatch
  *
  * Auto-assigns the nearest idle runner to an order based on
- * section proximity. Called when an order transitions to "ready".
+ * section proximity. Called after payment when an order enters "preparing".
  *
  * Body: { order_id: string, venue_id: string }
- * Returns the assigned runner or a message if none available.
  */
 export async function POST(request: Request) {
   try {
     const { order_id, venue_id } = await request.json();
 
     if (!order_id || !venue_id) {
-      return NextResponse.json(
-        { error: "order_id and venue_id required" },
-        { status: 400 }
-      );
+      return errorResponse("order_id and venue_id required", 400);
     }
 
     const supabase = getServiceClient();
@@ -32,14 +29,11 @@ export async function POST(request: Request) {
       .single();
 
     if (orderError || !order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      return errorResponse("Order not found", 404);
     }
 
-    if (order.status !== "ready") {
-      return NextResponse.json(
-        { error: "Order is not in ready state" },
-        { status: 400 }
-      );
+    if (order.status !== "preparing") {
+      return errorResponse("Order is not in preparing state", 400);
     }
 
     const { data: runners, error: runnerError } = await supabase
@@ -49,10 +43,7 @@ export async function POST(request: Request) {
       .eq("status", "idle");
 
     if (runnerError) {
-      return NextResponse.json(
-        { error: "Failed to fetch runners" },
-        { status: 500 }
-      );
+      return errorResponse("Failed to fetch runners", 500);
     }
 
     const bestRunner = assignRunner(order as Order, (runners ?? []) as Runner[]);
@@ -60,25 +51,17 @@ export async function POST(request: Request) {
     if (!bestRunner) {
       return NextResponse.json({
         assigned: false,
-        message: "No idle runners available — order remains in ready queue",
+        message: "No idle runners available — order visible in runner queue",
       });
     }
 
-    const { error: updateError } = await supabase
+    await supabase
       .from("orders")
       .update({
-        status: "assigned",
         runner_id: bestRunner.id,
         updated_at: new Date().toISOString(),
       })
       .eq("id", order_id);
-
-    if (updateError) {
-      return NextResponse.json(
-        { error: "Failed to assign runner" },
-        { status: 500 }
-      );
-    }
 
     await supabase
       .from("runners")
@@ -91,10 +74,7 @@ export async function POST(request: Request) {
       runner_section: bestRunner.current_section,
       order_section: order.seat_section,
     });
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+  } catch (err) {
+    return serverError("Dispatch error", err);
   }
 }

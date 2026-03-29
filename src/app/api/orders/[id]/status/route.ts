@@ -1,17 +1,13 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { OrderStatus } from "@/lib/types";
-import { assignRunner } from "@/lib/dispatch";
+import { errorResponse, serverError } from "@/lib/api";
 
 const VALID_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  pending: ["accepted", "cancelled"],
-  accepted: ["preparing", "cancelled"],
-  preparing: ["ready", "cancelled"],
-  ready: ["assigned"],
-  assigned: ["delivering"],
+  pending: ["preparing"],
+  preparing: ["delivering"],
   delivering: ["delivered"],
   delivered: [],
-  cancelled: [],
 };
 
 export async function PATCH(
@@ -29,16 +25,14 @@ export async function PATCH(
       .single();
 
     if (fetchError || !current) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+      return errorResponse("Order not found", 404);
     }
 
     const allowed = VALID_TRANSITIONS[current.status as OrderStatus] ?? [];
     if (!allowed.includes(status)) {
-      return NextResponse.json(
-        {
-          error: `Cannot transition from ${current.status} to ${status}`,
-        },
-        { status: 400 }
+      return errorResponse(
+        `Cannot transition from ${current.status} to ${status}`,
+        400
       );
     }
 
@@ -48,29 +42,6 @@ export async function PATCH(
     };
     if (runner_id) updateData.runner_id = runner_id;
 
-    // When transitioning to "ready", attempt automatic runner dispatch
-    // using section proximity algorithm
-    if (status === "ready" && !runner_id) {
-      const { data: runners } = await supabase
-        .from("runners")
-        .select("*")
-        .eq("venue_id", current.venue_id)
-        .eq("status", "idle");
-
-      const bestRunner = assignRunner(current, runners ?? []);
-
-      if (bestRunner) {
-        updateData.status = "assigned";
-        updateData.runner_id = bestRunner.id;
-
-        await supabase
-          .from("runners")
-          .update({ status: "busy" })
-          .eq("id", bestRunner.id);
-      }
-    }
-
-    // When a runner completes delivery, set them back to idle
     if (status === "delivered" && current.runner_id) {
       await supabase
         .from("runners")
@@ -86,17 +57,11 @@ export async function PATCH(
       .single();
 
     if (updateError) {
-      return NextResponse.json(
-        { error: "Failed to update order" },
-        { status: 500 }
-      );
+      return errorResponse("Failed to update order", 500);
     }
 
     return NextResponse.json(updated);
-  } catch {
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+  } catch (err) {
+    return serverError("Status update error", err);
   }
 }

@@ -1,22 +1,27 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
+import { errorResponse, serverError } from "@/lib/api";
 
 export async function GET(
   _request: Request,
   { params }: { params: { slug: string } }
 ) {
-  const supabase = getServiceClient();
+  try {
+    const supabase = getServiceClient();
 
-  const { data, error } = await supabase
-    .from("venues")
-    .select("*")
-    .eq("slug", params.slug)
-    .eq("active", true)
-    .single();
+    const { data, error } = await supabase
+      .from("venues")
+      .select("*")
+      .eq("slug", params.slug)
+      .eq("active", true)
+      .single();
 
-  if (error || !data) {
-    return NextResponse.json({ error: "Venue not found" }, { status: 404 });
+    if (error || !data) {
+      return errorResponse("Venue not found", 404);
+    }
+
+    return NextResponse.json(data);
+  } catch (err) {
+    return serverError("Venue error", err);
   }
-
-  return NextResponse.json(data);
 }

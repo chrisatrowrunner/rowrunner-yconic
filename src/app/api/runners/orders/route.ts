@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { sortOrdersByProximity } from "@/lib/dispatch";
 import { Order } from "@/lib/types";
+import { deriveTip, errorResponse } from "@/lib/api";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -9,10 +10,7 @@ export async function GET(request: Request) {
   const venueId = searchParams.get("venue_id");
 
   if (!runnerId || !venueId) {
-    return NextResponse.json(
-      { error: "runner_id and venue_id required" },
-      { status: 400 }
-    );
+    return errorResponse("runner_id and venue_id required", 400);
   }
 
   const supabase = getServiceClient();
@@ -27,22 +25,26 @@ export async function GET(request: Request) {
     .from("orders")
     .select("*, order_items(*), vendor:vendors(name)")
     .eq("venue_id", venueId)
-    .or(`runner_id.eq.${runnerId},and(runner_id.is.null,status.in.(ready))`)
-    .not("status", "in", '("delivered","cancelled")')
+    .in("status", ["preparing", "delivering"])
     .order("created_at", { ascending: true });
 
   if (error) {
     console.error("Runner orders error:", error);
-    return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
+    return errorResponse("Failed to fetch orders", 500);
   }
 
-  const orders = (data ?? []) as Order[];
+  const orders = (data ?? []).map((o: Record<string, unknown>) => ({
+    ...o,
+    tip_amount: deriveTip(o),
+    tip_percent: 0,
+  }) as Order);
+
   const runnerSection = runner?.current_section ?? null;
+  const available = orders.filter((o) => !o.runner_id);
+  const myOrders = orders.filter((o) => o.runner_id === runnerId);
 
-  const available = orders.filter((o) => o.status === "ready" && !o.runner_id);
-  const claimed = orders.filter((o) => o.runner_id === runnerId);
-
-  const sortedAvailable = sortOrdersByProximity(available, runnerSection);
-
-  return NextResponse.json([...sortedAvailable, ...claimed]);
+  return NextResponse.json([
+    ...sortOrdersByProximity(available, runnerSection),
+    ...myOrders,
+  ]);
 }

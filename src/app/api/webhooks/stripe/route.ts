@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { getServiceClient } from "@/lib/supabase";
+import { assignRunner } from "@/lib/dispatch";
 import Stripe from "stripe";
 
 export async function POST(request: Request) {
@@ -33,17 +34,36 @@ export async function POST(request: Request) {
 
       const { data: order } = await supabase
         .from("orders")
-        .select("status")
+        .select("*")
         .eq("id", orderId)
         .single();
 
       if (order && order.status === "pending") {
+        const updateData: Record<string, unknown> = {
+          status: "preparing",
+          updated_at: new Date().toISOString(),
+        };
+
+        const { data: runners } = await supabase
+          .from("runners")
+          .select("*")
+          .eq("venue_id", order.venue_id)
+          .eq("status", "idle");
+
+        const bestRunner = assignRunner(order, runners ?? []);
+
+        if (bestRunner) {
+          updateData.runner_id = bestRunner.id;
+
+          await supabase
+            .from("runners")
+            .update({ status: "busy" })
+            .eq("id", bestRunner.id);
+        }
+
         await supabase
           .from("orders")
-          .update({
-            status: "accepted",
-            updated_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq("id", orderId);
       }
     }

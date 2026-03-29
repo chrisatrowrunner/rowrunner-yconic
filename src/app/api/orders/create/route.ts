@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase";
 import { stripe } from "@/lib/stripe";
-import {
-  calculateServiceFee,
-  DELIVERY_FEE,
-} from "@/lib/types";
+import { calculateServiceFee, DELIVERY_FEE } from "@/lib/types";
+import { errorResponse, serverError } from "@/lib/api";
 
 interface CreateOrderItem {
   menu_item_id: string;
@@ -47,11 +45,7 @@ export async function POST(request: Request) {
     } = body;
 
     if (!venue_id || !vendor_id || !items || items.length === 0) {
-      console.error("Missing required fields:", { venue_id, vendor_id, itemsLength: items?.length });
-      return NextResponse.json(
-        { error: "Missing required fields", detail: { venue_id: !!venue_id, vendor_id: !!vendor_id, items: items?.length ?? 0 } },
-        { status: 400 }
-      );
+      return errorResponse("Missing required fields", 400);
     }
 
     const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
@@ -74,8 +68,6 @@ export async function POST(request: Request) {
         service_fee: serviceFee,
         delivery_fee: deliveryFee,
         total,
-        tip_percent: tip_percent || 0,
-        tip_amount: tipAmt,
         status: "pending",
         type,
         customer_name: customer_name || null,
@@ -177,11 +169,6 @@ export async function POST(request: Request) {
       checkout_url: session.url,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error("Create order error:", message);
-    return NextResponse.json(
-      { error: message || "Internal server error" },
-      { status: 500 }
-    );
+    return serverError("Create order error", error);
   }
 }
